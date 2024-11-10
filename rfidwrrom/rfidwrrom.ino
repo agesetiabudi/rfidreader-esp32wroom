@@ -5,32 +5,34 @@
 #include <RTClib.h>
 #include <Ethernet.h>
 
-#define SS_PIN 10        // Pin CS RFID
-#define RST_PIN 9        // Pin Reset RFID
-#define BUZZER_PIN 19    // Pin Buzzer
-#define SDA_PIN 5        // Pin SDA I2C
-#define SCL_PIN 8        // Pin SCL I2C
-#define CS_PIN_ETH 16    // Pin CS Ethernet W5500
+#define SS_PIN 10     
+#define RST_PIN 9       
+#define BUZZER_PIN 19   
+#define SDA_PIN 5    
+#define SCL_PIN 8     
+#define CS_PIN_ETH 16 
+#define CS_PIN_TFT 17  
 
-MFRC522 mfrc522(SS_PIN, RST_PIN);   
+MFRC522 mfrc522(SS_PIN, RST_PIN);  
 LiquidCrystal_I2C lcd(0x27, 16, 2); 
 RTC_DS3231 rtc;                 
-EthernetClient client;     
+EthernetClient client;         
 
-DateTime sekarang;
+DateTime sekarang;            
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip;             
+IPAddress ip;              
 
 void setup() {
   Serial.begin(115200);
-  SPI.begin(6, 2, 7);        // Inisialisasi SPI (SCK 6, MISO 2, MOSI 7)
-  mfrc522.PCD_Init();       
-  pinMode(BUZZER_PIN, OUTPUT);
+  SPI.begin(6, 2, 7);    
+  mfrc522.PCD_Init();  
+  pinMode(BUZZER_PIN, OUTPUT); 
 
   Wire.begin(SDA_PIN, SCL_PIN); 
-  lcd.init();            
-  lcd.backlight();         
+  lcd.init();             
+  lcd.backlight();        
 
+  // Inisialisasi RTC
   if (!rtc.begin()) {
     Serial.println("RTC tidak ditemukan!");
     while (1);
@@ -38,22 +40,24 @@ void setup() {
 
   if (rtc.lostPower()) {
     Serial.println("RTC kehilangan daya, set ulang waktu...");
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));  // Atur waktu saat kompilasi
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); 
   }
 
+  // Inisialisasi Ethernet
   Ethernet.init(CS_PIN_ETH);
-  if (Ethernet.begin(mac) == 0) {
-    Serial.println("Gagal mendapatkan IP melalui DHCP, menggunakan IP default.");
-    Ethernet.begin(mac, IPAddress(192, 168, 1, 177)); 
-  }
+  // if (Ethernet.begin(mac) == 0) {
+  //   Serial.println("Gagal mendapatkan IP melalui DHCP, menggunakan IP default.");
+  //   Ethernet.begin(mac, IPAddress(192, 168, 1, 177)); // Set IP default jika DHCP gagal
+  // }
 
-  ip = Ethernet.localIP();
+  ip = Ethernet.localIP(); 
   tampilkanPesanAwal();
   Serial.println("Tempatkan kartu RFID dekat dengan modul...");
 }
 
 void loop() {
   sekarang = rtc.now();
+  // Serial.print(ip);
 
   if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
     delay(50);
@@ -64,7 +68,7 @@ void loop() {
   delay(200);                    
   digitalWrite(BUZZER_PIN, LOW); 
 
-  Serial.print("UID Kartu: ");
+  // Tampilkan UID Kartu RFID pada LCD dan Serial Monitor
   lcd.clear();
   lcd.setCursor(3, 4);
 
@@ -81,9 +85,9 @@ void loop() {
   Serial.println();
 
   delay(1000);
-  tampilkanPesanAwal(); 
+  tampilkanPesanAwal();  // Menampilkan pesan awal setelah delay
 
-  mfrc522.PICC_HaltA(); 
+  mfrc522.PICC_HaltA();   // Menghentikan pembacaan kartu
 }
 
 void tampilkanPesanAwal() {
