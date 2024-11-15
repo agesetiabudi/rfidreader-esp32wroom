@@ -5,12 +5,15 @@
 #include <RTClib.h>
 #include <SD_MMC.h>
 #include <ArduinoJson.h>
+#include <Ethernet.h>
 
-#define SS_PIN 10
+#define SS_PIN 10     
 #define RST_PIN 9       
 #define BUZZER_PIN 19   
 #define SDA_PIN 5    
 #define SCL_PIN 8     
+#define CS_PIN_ETH 16 
+// #define CS_PIN_TFT 17   
 #define SD_MMC_CMD 38 // Please do not modify it.
 #define SD_MMC_CLK 39 // Please do not modify it.
 #define SD_MMC_D0 40  // Please do not modify it.
@@ -18,7 +21,11 @@
 MFRC522 mfrc522(SS_PIN, RST_PIN);  
 LiquidCrystal_I2C lcd(0x27, 16, 2); 
 RTC_DS3231 rtc;                 
-DateTime sekarang;              
+EthernetClient client;         
+
+DateTime sekarang;            
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip;    
 
 void setup() {
   Serial.begin(115200);
@@ -43,6 +50,14 @@ void setup() {
     Serial.println("RTC kehilangan daya, set ulang waktu...");
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); 
   }
+
+  Ethernet.init(CS_PIN_ETH);
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println("Gagal mendapatkan IP melalui DHCP, menggunakan IP default.");
+    Ethernet.begin(mac, IPAddress(192, 168, 1, 177)); 
+  }
+
+  ip = Ethernet.localIP(); 
 
   // Inisialisasi SD card
   SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
@@ -79,10 +94,13 @@ void loop() {
   sekarang = rtc.now();
 
   if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
+    Serial.print("IP: ");
+    Serial.println(ip);
     return;
+  }else{
+    tampilkanIDKartu();
   }
 
-  tampilkanIDKartu();
   delay(1000);
 }
 
@@ -111,6 +129,9 @@ void tampilkanIDKartu() {
   Serial.println(uidString);
   
   simpanDataKeSD(uidString);
+
+  delay(1000);
+  tampilkanPesanAwal();
 
   mfrc522.PICC_HaltA();   // Menghentikan pembacaan kartu
 }
